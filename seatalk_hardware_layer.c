@@ -17,6 +17,8 @@
 #define GPIO_TX_LOW_VALUE 1
 #define GPIO_TX_HIGH_VALUE 0
 
+#define SEATALK_PORT 0
+
 // interrupt variables
 short int gpio_rxd_irq = 0;
 
@@ -46,7 +48,7 @@ static irqreturn_t rxd_irq_handler(int irq, void *dev_id, struct pt_regs *regs) 
     pr_info("debouncing\n");
   } else {
     // make sure the receiver is not already active
-    if (initiate_seatalk_receive_character()) {
+    if (initiate_seatalk_receive_character(SEATALK_PORT)) {
       // reset debounce timer
       // schedule receive event for first bit
       hrtimer_start(&hrtimer_rxd, ktime_set(0, BIT_INTERVAL + START_BIT_DELAY), HRTIMER_MODE_REL);
@@ -58,11 +60,11 @@ static irqreturn_t rxd_irq_handler(int irq, void *dev_id, struct pt_regs *regs) 
   return IRQ_HANDLED;
 }
 
-int get_seatalk_hardware_bit_value(void) {
+int get_seatalk_hardware_bit_value(int seatalk_port) {
   return gpio_get_value(GPIO_RXD_PIN) ? GPIO_RX_HIGH_VALUE : GPIO_RX_LOW_VALUE; // normal sense
 }
 
-void set_seatalk_hardware_bit_value(int bit_value) {
+void set_seatalk_hardware_bit_value(int seatalk_port, int bit_value) {
   gpio_set_value(GPIO_TXD_PIN, (bit_value == GPIO_TX_HIGH_VALUE) ? 1 : 0); // normal sense
 //#ifdef DEBUG
 //  pr_info("set GPIO_TXD_PIN to %d\n", bit_value);
@@ -107,7 +109,7 @@ static enum hrtimer_restart transmit_bit(struct hrtimer *timer) {
   }
 }
 
-void initiate_seatalk_hardware_transmitter(int bit_delay) {
+void initiate_seatalk_hardware_transmitter(int seatalk_port, int bit_delay) {
   // reawaken the transmittter. Wait a 10-bit duration as guard time after last char
   // that has been on the bus
   // first stop pending timer (if any)
@@ -187,3 +189,4 @@ void exit_seatalk_hardware_irq(void) {
   // release IRQ
   free_irq(gpio_rxd_irq, GPIO_DEVICE_DESC);
 }
+
